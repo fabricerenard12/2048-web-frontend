@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "target": "ES6",                 // Compile to ES6 JavaScript
+    "module": "ESNext",              // Use the latest module syntax
+    "jsx": "react",                  // Support JSX in React
+    "strict": true,                  // Enable all strict type-checking options
+    "esModuleInterop": true,         // Enable compatibility with CommonJS modules
+    "skipLibCheck": true,            // Skip type checking of declaration files
+    "forceConsistentCasingInFileNames": true // Ensure consistent casing in file names
+  },
+  "include": ["src"],                // Include the src directory
+}

@@ -3,8 +3,18 @@ import "../assets/css/Game.css";
 
 const GRID_SIZE = 4;
 
+interface TilePosition {
+    row: number;
+    col: number;
+}
+
 class Game {
+    private grid_: number[][];
+    private score_: number;
+
     constructor() {
+        this.grid_ = [];
+        this.score_ = 0;
         this.reset();
     }
 
@@ -15,8 +25,8 @@ class Game {
         this.addRandomTile();
     }
 
-    getRandomTilePosition() {
-        const emptyTiles = [];
+    private getRandomTilePosition(): TilePosition | null {
+        const emptyTiles: TilePosition[] = [];
         for (let row = 0; row < GRID_SIZE; row++) {
             for (let col = 0; col < GRID_SIZE; col++) {
                 if (this.grid_[row][col] === 0) {
@@ -28,14 +38,14 @@ class Game {
         return emptyTiles[Math.floor(Math.random() * emptyTiles.length)];
     }
 
-    addRandomTile() {
+    private addRandomTile() {
         const position = this.getRandomTilePosition();
         if (position) {
             this.grid_[position.row][position.col] = Math.random() < 0.9 ? 2 : 4;
         }
     }
 
-    moveLeft() {
+    private moveLeft(): boolean {
         let moved = false;
         for (let row = 0; row < GRID_SIZE; row++) {
             let newRow = this.grid_[row].filter((tile) => tile !== 0);
@@ -59,7 +69,7 @@ class Game {
         return moved;
     }
 
-    rotateGrid() {
+    private rotateGrid() {
         const newGrid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0));
         for (let row = 0; row < GRID_SIZE; row++) {
             for (let col = 0; col < GRID_SIZE; col++) {
@@ -69,7 +79,7 @@ class Game {
         this.grid_ = newGrid;
     }
 
-    move(direction) {
+    move(direction: number): boolean {
         let moved = false;
 
         if (direction === 0) {
@@ -100,7 +110,7 @@ class Game {
         return moved;
     }
 
-    canMove() {
+    canMove(): boolean {
         for (let row = 0; row < GRID_SIZE; row++) {
             for (let col = 0; col < GRID_SIZE; col++) {
                 if (this.grid_[row][col] === 0) {
@@ -117,19 +127,19 @@ class Game {
         return false;
     }
 
-    getGrid() {
+    getGrid(): number[][] {
         return this.grid_;
     }
 
-    getScore() {
+    getScore(): number {
         return this.score_;
     }
 }
 
-const GameComponent = () => {
-    const [game, setGame] = useState(new Game());
-    const [grid, setGrid] = useState(game.getGrid());
-    const [score, setScore] = useState(game.getScore());
+const GameComponent: React.FC = () => {
+    const [game, setGame] = useState<Game>(new Game());
+    const [grid, setGrid] = useState<number[][]>(game.getGrid());
+    const [score, setScore] = useState<number>(game.getScore());
 
     const resetGame = () => {
         const newGame = new Game();
@@ -138,8 +148,8 @@ const GameComponent = () => {
         setScore(newGame.getScore());
     };
 
-    const handleKeyPress = (e) => {
-        let direction = null;
+    const handleKeyPress = (e: KeyboardEvent) => {
+        let direction: number | null = null;
         switch (e.key) {
             case "ArrowLeft":
                 direction = 0;
@@ -169,7 +179,7 @@ const GameComponent = () => {
                 return;
         }
 
-        if (game.move(direction)) {
+        if (direction !== null && game.move(direction)) {
             setGrid([...game.getGrid()]);
             setScore(game.getScore());
         }
