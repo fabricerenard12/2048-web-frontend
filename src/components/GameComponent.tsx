@@ -1,140 +1,8 @@
 import React, { useEffect, useState } from "react";
 import "../assets/css/Game.css";
-
-const GRID_SIZE = 4;
-
-interface TilePosition {
-    row: number;
-    col: number;
-}
-
-class Game {
-    private grid_: number[][];
-    private score_: number;
-
-    constructor() {
-        this.grid_ = [];
-        this.score_ = 0;
-        this.reset();
-    }
-
-    reset() {
-        this.grid_ = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0));
-        this.score_ = 0;
-        this.addRandomTile();
-        this.addRandomTile();
-    }
-
-    private getRandomTilePosition(): TilePosition | null {
-        const emptyTiles: TilePosition[] = [];
-        for (let row = 0; row < GRID_SIZE; row++) {
-            for (let col = 0; col < GRID_SIZE; col++) {
-                if (this.grid_[row][col] === 0) {
-                    emptyTiles.push({ row, col });
-                }
-            }
-        }
-        if (emptyTiles.length === 0) return null;
-        return emptyTiles[Math.floor(Math.random() * emptyTiles.length)];
-    }
-
-    private addRandomTile() {
-        const position = this.getRandomTilePosition();
-        if (position) {
-            this.grid_[position.row][position.col] = Math.random() < 0.9 ? 2 : 4;
-        }
-    }
-
-    private moveLeft(): boolean {
-        let moved = false;
-        for (let row = 0; row < GRID_SIZE; row++) {
-            let newRow = this.grid_[row].filter((tile) => tile !== 0);
-            for (let col = 0; col < newRow.length - 1; col++) {
-                if (newRow[col] === newRow[col + 1]) {
-                    newRow[col] *= 2;
-                    this.score_ += newRow[col];
-                    newRow[col + 1] = 0;
-                    moved = true;
-                }
-            }
-            newRow = newRow.filter((tile) => tile !== 0);
-            while (newRow.length < GRID_SIZE) {
-                newRow.push(0);
-            }
-            if (this.grid_[row].toString() !== newRow.toString()) {
-                moved = true;
-            }
-            this.grid_[row] = newRow;
-        }
-        return moved;
-    }
-
-    private rotateGrid() {
-        const newGrid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0));
-        for (let row = 0; row < GRID_SIZE; row++) {
-            for (let col = 0; col < GRID_SIZE; col++) {
-                newGrid[col][GRID_SIZE - row - 1] = this.grid_[row][col];
-            }
-        }
-        this.grid_ = newGrid;
-    }
-
-    move(direction: number): boolean {
-        let moved = false;
-
-        if (direction === 0) {
-            moved = this.moveLeft();
-        } else if (direction === 1) {
-            this.rotateGrid();
-            this.rotateGrid();
-            this.rotateGrid();
-            moved = this.moveLeft();
-            this.rotateGrid();
-        } else if (direction === 2) {
-            this.rotateGrid();
-            this.rotateGrid();
-            moved = this.moveLeft();
-            this.rotateGrid();
-            this.rotateGrid();
-        } else if (direction === 3) {
-            this.rotateGrid();
-            moved = this.moveLeft();
-            this.rotateGrid();
-            this.rotateGrid();
-            this.rotateGrid();
-        }
-
-        if (moved) {
-            this.addRandomTile();
-        }
-        return moved;
-    }
-
-    canMove(): boolean {
-        for (let row = 0; row < GRID_SIZE; row++) {
-            for (let col = 0; col < GRID_SIZE; col++) {
-                if (this.grid_[row][col] === 0) {
-                    return true;
-                }
-                if (col < GRID_SIZE - 1 && this.grid_[row][col] === this.grid_[row][col + 1]) {
-                    return true;
-                }
-                if (row < GRID_SIZE - 1 && this.grid_[row][col] === this.grid_[row + 1][col]) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    getGrid(): number[][] {
-        return this.grid_;
-    }
-
-    getScore(): number {
-        return this.score_;
-    }
-}
+import { Game } from "../assets/ts/Game";
+import { getWorker, releaseWorker } from "../workers/workerPool";
+import { addTask } from "../workers/taskQueue";
 
 const GameComponent: React.FC = () => {
     const [game, setGame] = useState<Game>(new Game());
@@ -146,6 +14,47 @@ const GameComponent: React.FC = () => {
         setGame(newGame);
         setGrid(newGame.getGrid());
         setScore(newGame.getScore());
+    };
+
+    // const sendDataToServer = () => {
+    //     const grid: bigint = game.serialize();
+
+    //     const gridData = new GridData();
+    //     gridData.setGrid(Number(grid & 0xFFFFFFFFFFFFFFFFn));
+    //     const binaryData = gridData.serializeBinary();
+    
+    //     const socket = new WebSocket('ws://your-server-url');
+    
+    //     socket.onopen = () => {
+    //         console.log('WebSocket connection opened');
+    //         socket.send(binaryData);
+    //     };
+    
+    //     socket.onmessage = (event) => {
+    //         console.log('Message from server', event.data);
+    //     };
+    
+    //     socket.onerror = (error) => {
+    //         console.error('WebSocket error', error);
+    //     };
+    
+    //     socket.onclose = () => {
+    //         console.log('WebSocket connection closed');
+    //     };
+    // };
+
+
+    const findBestMove = () => {
+        addTask(game, 300, navigator.hardwareConcurrency)
+            .then((bestMove) => {
+                console.log(`Best move determined by MC: ${bestMove}`);
+                game.move(bestMove);
+                setGrid([...game.getGrid()]);
+                setScore(game.getScore());
+            })
+            .catch((error) => {
+                console.error('Error in finding the best move', error);
+            });
     };
 
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -174,6 +83,9 @@ const GameComponent: React.FC = () => {
                 break;
             case "s":
                 direction = 3;
+                break;
+            case " ":
+                findBestMove();
                 break;
             default:
                 return;
